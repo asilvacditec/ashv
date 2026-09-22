@@ -46,6 +46,26 @@ sudo bash /vagrant/oracle/create-orcl.sh \
 
 O diretório pai escolhido precisa ser gravável pelo dono do Oracle Home. Os valores de memória são MiB. O script rejeita um orçamento maior que o calculado como disponível; não usa swap como se fosse RAM.
 
+## Log de debug para diagnóstico
+
+O diagnóstico é automático, sem precisar de `bash -x`. Execute dentro da VM:
+
+```sh
+sudo bash /vagrant/oracle/create-orcl.sh --dry-run
+```
+
+A primeira linha informa um arquivo exclusivo, por exemplo `/tmp/create-orcl-debug.ABC12345.log`. Ele registra também falhas anteriores à criação dos diretórios: descoberta do Oracle, versão, usuário, limites de recursos, memória, discos candidatos, permissões, listener e artefatos existentes. Cada etapa tem horário UTC; falhas inesperadas incluem linha, pilha de funções e código de saída. O encerramento informa o código final e a última etapa.
+
+Para executar a criação com o mesmo diagnóstico, retire `--dry-run`. Durante DBCA, a saída detalhada continua no `provision/dbca.log`; ao terminar essa etapa, o debug recebe as últimas 80 linhas, com o código de saída original. O mesmo vale para iniciar o listener e validar o banco com SQL*Plus. O log não elimina a proteção contra bancos ou arquivos existentes.
+
+Quando iniciado como root, há um arquivo para root e outro para o usuário Oracle. **O primeiro arquivo inclui a saída do segundo**, inclusive falhas de `runuser`; compartilhe o primeiro. Para ler, substitua o exemplo pelo caminho mostrado na sua execução:
+
+```sh
+sudo cat /tmp/create-orcl-debug.ABC12345.log
+```
+
+As senhas aleatórias geradas pelo script são substituídas por `[SENHA_REMOVIDA]` no debug, inclusive se o DBCA as repetir. Não são registrados o arquivo de credenciais, o arquivo de resposta completo ou um dump do ambiente. Revise o conteúdo antes de compartilhar: caminhos, usuário local e mensagens dos utilitários aparecem, e o filtro não identifica qualquer segredo externo que um utilitário personalizado possa imprimir. Não compartilhe `credentials.env`, `dbca.rsp` ou logs brutos do Oracle. O debug é criado com permissão 600 em `/tmp`, inclusive no dry-run, e pode desaparecer na limpeza de temporários da VM.
+
 ## Descoberta e dimensionamento
 
 | Item | Comportamento |
@@ -143,6 +163,6 @@ bash tests/shell/create-orcl-test.sh
 
 A suíte simula executáveis Oracle e recursos do servidor: dimensionamento, dry-run, criação em formatos antigos/modernos, credenciais, reexecução, falhas DBCA/SQL, listener, memória/disco insuficientes e caminhos inválidos. Não precisa de Oracle nem cria banco. Há um workflow dedicado a esses checks.
 
-Na validação local, os 12 cenários simulados passaram, a sintaxe Bash foi aceita e o ShellCheck 0.11.0 não apontou problemas. A criação real na VM Vagrant ainda precisa ser executada no ambiente do usuário; esses resultados não certificam os binários ou a configuração da VM.
+Os 13 cenários simulados incluem falha antes do provisionamento, erro inesperado de comando, preservação do código de saída do DBCA, remoção de senhas do debug e falha na troca de usuário. A criação real na VM Vagrant ainda precisa ser executada no ambiente do usuário; esses testes não certificam os binários ou a configuração da VM.
 
 Referências oficiais para os formatos e a criação automatizada: [DBCA e criação de banco](https://docs.oracle.com/en/database/oracle/oracle-database/19/admin/creating-and-configuring-an-oracle-database.html), [exemplo de resposta Oracle 12.1](https://github.com/oracle/docker-images/blob/main/OracleDatabase/SingleInstance/dockerfiles/12.1.0.2/dbca.rsp.tmpl) e [exemplo de resposta Oracle 19c](https://github.com/oracle/docker-images/blob/main/OracleDatabase/SingleInstance/dockerfiles/19.3.0/dbca.rsp.tmpl).

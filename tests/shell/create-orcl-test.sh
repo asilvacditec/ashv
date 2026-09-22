@@ -62,6 +62,7 @@ STUB
 printf '%s\n' "$*" > "$FIXTURE_ROOT/dbca.args"
 rsp=${!#}
 cp "$rsp" "$FIXTURE_ROOT/captured.rsp"
+sed -n '/[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]/p' "$rsp"
 [[ $FIXTURE_DBCA_FAIL != true ]] || exit 7
 echo 'Database creation complete (fixture)'
 STUB
@@ -232,6 +233,57 @@ test_input_and_running_instance_guards() {
     assert_absent "$fixture_root/dbca.args"
 }
 
+test_debug_logs() {
+    fixture
+    mktemp() {
+        if [[ ${1:-} == /tmp/create-orcl-debug.XXXXXXXX.log ]]; then
+            command mktemp "$fixture_root/debug.XXXXXXXX.log"
+        else command mktemp "$@"; fi
+    }
+    expect_failure debug_run --port 70000
+    local log
+    log=$(find "$fixture_root" -name 'debug.*.log' -print -quit)
+    assert_contains "$log" 'Porta deve estar'
+    assert_contains "$log" 'FIM: codigo=1'
+    fixture
+    printf '#!/usr/bin/env bash\necho biblioteca-ausente >&2\nexit 23\n' > "$ORACLE_HOME/bin/orabase"
+    expect_failure debug_run --oracle-home "$ORACLE_HOME" --dry-run
+    log=$(find "$fixture_root" -name 'debug.*.log' -print -quit)
+    assert_contains "$log" 'biblioteca-ausente'
+    assert_contains "$log" 'ERRO inesperado: codigo=23 linha='
+    assert_contains "$log" 'FIM: codigo=23'
+    fixture
+    export FIXTURE_DBCA_FAIL=true
+    local status=0 secret
+    set +e
+    (set -e; debug_run --oracle-home "$ORACLE_HOME" --data-dir "$fixture_root/data") > "$fixture_root/output" 2>&1
+    status=$?
+    set -e
+    [[ $status == 7 ]] || fail 'DBCA exit status lost by debug pipeline'
+    log=$(find "$fixture_root" -name 'debug.*.log' -print -quit)
+    assert_contains "$log" 'Resultado DBCA criar ORCL: codigo=7'
+    assert_contains "$log" '[SENHA_REMOVIDA]'
+    assert_contains "$log" 'FIM: codigo=7'
+    while IFS='=' read -r _key secret; do
+        if grep -Fq "$secret" "$log" "$fixture_root/output"; then fail 'Debug leaked password'; fi
+    done < "$fixture_root/data/ORCL/provision/credentials.env"
+    assert_absent "$fixture_root/data/ORCL/provision/dbca.rsp"
+    fixture
+    debug_run --oracle-home "$ORACLE_HOME" --data-dir "$fixture_root/data" --dry-run > "$fixture_root/output"
+    log=$(find "$fixture_root" -name 'debug.*.log' -print -quit)
+    assert_contains "$log" 'DRY RUN'
+    assert_contains "$log" 'FIM: codigo=0'
+    assert_absent "$fixture_root/data/ORCL"
+    fixture
+    id() { case $1 in -u) echo 0 ;; -un) echo root ;; *) command id "$@" ;; esac; }
+    runuser() { echo 'runuser simulado: acesso negado' >&2; return 42; }
+    expect_failure debug_run --oracle-home "$ORACLE_HOME" --dry-run
+    log=$(find "$fixture_root" -name 'debug.*.log' -print -quit)
+    assert_contains "$log" 'troca de usuario para oracle'
+    assert_contains "$log" 'runuser simulado: acesso negado'
+    assert_contains "$log" 'FIM: codigo=42'
+}
+
 run_case test_memory_and_old_linux
 run_case test_dry_run
 run_case test_modern_creation_and_secrets
@@ -244,4 +296,5 @@ run_case test_existing_database_and_lock
 run_case test_resource_and_version_guards
 run_case test_listener_reuse
 run_case test_input_and_running_instance_guards
-printf 'All 12 shell scenarios passed (Oracle commands simulated).\n'
+run_case test_debug_logs
+printf 'All 13 shell scenarios passed (Oracle commands simulated).\n'

@@ -7,6 +7,42 @@ umask 077
 
 die() { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
 info() { printf '%s\n' "$*"; }
+stage() {
+    debug_stage=$1
+    printf '[%s] ETAPA: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$debug_stage" >&2
+}
+
+# Never use xtrace: response-file generation expands database passwords.
+redact_debug() { sed -u -E 's/Ora9[a-f0-9]{24}/[SENHA_REMOVIDA]/g'; }
+
+run_logged() {
+    local output=$1 label=$2 result=0
+    shift 2
+    stage "$label"
+    "$@" > "$output" 2>&1 || result=$?
+    printf 'Resultado %s: codigo=%s; log privado=%s\n' "$label" "$result" "$output" >&2
+    printf '%s\n' '--- Ultimas 80 linhas (senhas geradas removidas) ---' >&2
+    tail -n 80 -- "$output" | redact_debug >&2
+    ((result == 0)) || exit "$result"
+}
+
+debug_run() (
+    # A private, unique file also covers failures before ORACLE_HOME is known.
+    local debug_log
+    debug_log=$(mktemp /tmp/create-orcl-debug.XXXXXXXX.log) || exit 1
+    printf 'Log de debug: %s\n' "$debug_log"
+    (
+        set -Eeuo pipefail
+        stage inicializacao
+        trap cleanup EXIT
+        trap 'printf "ERRO inesperado: codigo=%s linha=%s funcao=%s etapa=%s\n" "$?" "$LINENO" "${FUNCNAME[*]}" "$debug_stage" >&2' ERR
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
+        printf 'Bash=%s; sistema=%s; usuario=%s; uid=%s\n' "$BASH_VERSION" "$(uname -srm)" "$(id -un)" "$(id -u)"
+        printf 'Limites de recursos:\n'; ulimit -a
+        main "$@"
+    ) 2>&1 | redact_debug | tee -a "$debug_log"
+)
 usage() {
     cat <<'HELP'
 Uso: bash create-orcl.sh [opcoes]
@@ -23,6 +59,7 @@ Execute dentro da VM Linux como dono do Oracle Home, ou como root (runuser).
 Sem opcoes: SID ORCL, AL32UTF8, filesystem, senhas aleatorias, DBCA silencioso.
 Oracle 10g/11g: non-CDB. Oracle 12c+: CDB ORCL com PDB ORCLPDB1.
 Recusa bancos/arquivos existentes. Nao apaga nem retoma criacoes incompletas.
+Log de debug automatico em /tmp/create-orcl-debug.*.log, inclusive no dry-run.
 HELP
 }
 
@@ -79,6 +116,7 @@ discover_home() {
 detect_version() {
     local banner
     banner=$("$ORACLE_HOME/bin/sqlplus" -V) || die 'sqlplus -V falhou; confira bibliotecas do sistema.'
+    printf 'SQL*Plus: %s\n' "$banner" >&2
     version=$(printf '%s\n' "$banner" | sed -nE 's/.*(Release|Version) ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+).*/\2/p' | tail -n 1)
     [[ -n $version ]] || die 'Nao foi possivel interpretar a versao do SQL*Plus.'
     IFS=. read -r major minor _patch update _revision <<< "$version"
@@ -150,8 +188,10 @@ select_storage() {
     for candidate in "${candidates[@]}"; do
         safe_path "$candidate"
         parent=$(nearest_parent "$candidate")
-        [[ -w $parent ]] || continue
+        printf 'Disco candidato=%s; ancestral=%s\n' "$candidate" "$parent" >&2
+        [[ -w $parent ]] || { info "Sem permissao de escrita: $parent" >&2; continue; }
         filesystem_info "$parent"
+        printf 'Filesystem=%s; livre_MiB=%s; inodes=%s\n' "$fs_type" "$free_mb" "$free_inodes" >&2
         local_filesystem "$fs_type" || continue
         ((free_inodes >= 1024)) || continue
         if ((free_mb > best_free)); then data_root=$candidate; best_free=$free_mb; fi
@@ -193,7 +233,7 @@ inspect_listener() {
     listener_address="(ADDRESS=(PROTOCOL=TCP)(HOST=127.0.0.1)(PORT=$port))"
     reuse_listener=false
     if awk -v port="$port" '$4 ~ (":" port "$") {found=1} END {exit !found}' <<< "$sockets"; then
-        "$ORACLE_HOME/bin/lsnrctl" status "$listener_address" >/dev/null 2>&1 ||
+        "$ORACLE_HOME/bin/lsnrctl" status "$listener_address" ||
             die "Porta $port ocupada, mas nao responde como listener Oracle local. Use --port."
         reuse_listener=true
     fi
@@ -295,16 +335,19 @@ random_password() {
 
 cleanup() {
     local result=$?
-    trap - EXIT
+    trap - EXIT ERR
+    set +e
     [[ -z ${response_file:-} ]] || rm -f -- "$response_file"
     if ((result != 0)) && [[ -n ${work_dir_created:-} ]]; then
         printf 'Criacao interrompida. Arquivos preservados em %s; consulte os logs privados.\n' "$work_dir" >&2
         printf 'Nao execute novamente sem diagnosticar os artefatos parciais. Nenhum banco foi apagado.\n' >&2
     fi
+    printf '[%s] FIM: codigo=%s; ultima_etapa=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$result" "${debug_stage:-desconhecida}" >&2
     exit "$result"
 }
 
 provision() {
+    stage 'reserva dos diretorios e lock'
     # A per-home flock covers simultaneous invocations using different data roots.
     exec 9>"$dbs_dir/.ashv-create-ORCL.lock"
     flock -n 9 || die 'Outra criacao de ORCL esta em andamento neste Oracle Home.'
@@ -340,7 +383,7 @@ provision() {
         cat > "$TNS_ADMIN/listener.ora" <<EOF
 ORCL_LISTENER = (DESCRIPTION_LIST=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=0.0.0.0)(PORT=$port))))
 EOF
-        "$ORACLE_HOME/bin/lsnrctl" start ORCL_LISTENER > "$work_dir/listener.log" 2>&1 || die "Falha ao iniciar listener; veja $work_dir/listener.log"
+        run_logged "$work_dir/listener.log" 'iniciar listener' "$ORACLE_HOME/bin/lsnrctl" start ORCL_LISTENER
     fi
     {
         printf 'export ORACLE_SID=ORCL\nexport ORACLE_HOME=%q\nexport ORACLE_BASE=%q\n' "$ORACLE_HOME" "$ORACLE_BASE"
@@ -350,7 +393,7 @@ EOF
         printf 'export PATH="$ORACLE_HOME/bin:$PATH"\nexport LD_LIBRARY_PATH="$ORACLE_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\nunset TWO_TASK LOCAL ORACLE_PDB_SID\n'
     } > "$work_dir/orcl.env"
     info "Criando ORCL com DBCA $version. Pode levar varios minutos. Log: $work_dir/dbca.log"
-    "$ORACLE_HOME/bin/dbca" -silent -createDatabase -responseFile "$response_file" > "$work_dir/dbca.log" 2>&1 || die "DBCA falhou; veja $work_dir/dbca.log"
+    run_logged "$work_dir/dbca.log" 'DBCA criar ORCL' "$ORACLE_HOME/bin/dbca" -silent -createDatabase -responseFile "$response_file"
     rm -f -- "$response_file"
     response_file=''
     cat > "$work_dir/verify.sql" <<EOF
@@ -369,7 +412,7 @@ select 'ASHV_PDB_READY|' || name || '|' || open_mode from v$pdbs where name='ORC
 EOF
     fi
     printf 'exit success\n' >> "$work_dir/verify.sql"
-    "$ORACLE_HOME/bin/sqlplus" -L -s / as sysdba @"$work_dir/verify.sql" > "$work_dir/verify.log" 2>&1 || die "Validacao SQL falhou; veja $work_dir/verify.log"
+    run_logged "$work_dir/verify.log" 'validacao SQL e exportacao PFILE' "$ORACLE_HOME/bin/sqlplus" -L -s / as sysdba @"$work_dir/verify.sql"
     grep -qx 'ASHV_ORCL_READY|ORCL|READ WRITE' "$work_dir/verify.log" || die 'Banco nao confirmado como ORCL READ WRITE.'
     grep -qx 'ASHV_INSTANCE_READY|ORCL|OPEN' "$work_dir/verify.log" || die 'Instancia ORCL nao confirmada como OPEN.'
     [[ $cdb != true ]] || grep -qx 'ASHV_PDB_READY|ORCLPDB1|READ WRITE' "$work_dir/verify.log" || die 'PDB nao confirmada como READ WRITE.'
@@ -384,6 +427,7 @@ EOF
 }
 
 main() {
+    stage 'argumentos e ferramentas locais'
     ((BASH_VERSINFO[0] >= 4)) || die 'Bash 4 ou superior necessario.'
     local -a original_args=("$@")
     local option owner script_path base_config tool
@@ -409,26 +453,33 @@ main() {
         die 'Porta deve estar entre 1024 e 65535.'
     fi
     for tool in awk sed df stat ps readlink find flock od tr grep; do command -v "$tool" >/dev/null || die "Comando necessario: $tool"; done
+    stage 'descoberta Oracle Home'
     discover_home
+    info "ORACLE_HOME=$ORACLE_HOME"
     safe_path "$ORACLE_HOME"
     owner=$(stat -c %U -- "$ORACLE_HOME/bin/oracle")
     [[ $owner != root && $owner != UNKNOWN ]] || die 'O binario oracle deve pertencer ao usuario de instalacao, nao a root.'
     if (( $(id -u) == 0 )); then
+        stage "troca de usuario para $owner (o log externo inclui o log do filho)"
         command -v runuser >/dev/null || die 'runuser ausente. Execute como usuario Oracle.'
         script_path=$(readlink -f -- "${BASH_SOURCE[0]}")
-        exec runuser -u "$owner" -- bash "$script_path" "${original_args[@]}" --oracle-home "$ORACLE_HOME"
+        local handoff_result=0
+        runuser -u "$owner" -- bash "$script_path" "${original_args[@]}" --oracle-home "$ORACLE_HOME" || handoff_result=$?
+        return "$handoff_result"
     fi
     [[ $(id -un) == "$owner" ]] || die "Execute como $owner: sudo -iu $owner bash /caminho/create-orcl.sh"
     export ORACLE_HOME ORACLE_SID=ORCL
     export PATH="$ORACLE_HOME/bin:$PATH" LC_ALL=C
     export LD_LIBRARY_PATH="$ORACLE_HOME/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     unset TWO_TASK LOCAL ORACLE_PDB_SID SQLPATH
+    stage 'Oracle Base e diretorio de parametros'
     if [[ -n $base_option ]]; then ORACLE_BASE=$base_option
     elif [[ -x $ORACLE_HOME/bin/orabase ]]; then ORACLE_BASE=$("$ORACLE_HOME/bin/orabase")
     elif [[ $ORACLE_HOME == */product/* ]]; then ORACLE_BASE=${ORACLE_HOME%%/product/*}
     else die 'ORACLE_BASE nao identificado; use --oracle-base.'; fi
     safe_path "$ORACLE_BASE"
     export ORACLE_BASE
+    info "ORACLE_BASE=$ORACLE_BASE"
     [[ -d $ORACLE_BASE && -w $ORACLE_BASE ]] || die "ORACLE_BASE deve existir e ser gravavel: $ORACLE_BASE"
     dbs_dir=$ORACLE_HOME/dbs
     if [[ -x $ORACLE_HOME/bin/orabaseconfig ]]; then
@@ -439,16 +490,26 @@ main() {
     [[ -d $dbs_dir && -w $dbs_dir ]] || die "Diretorio de parametros nao gravavel: $dbs_dir"
     [[ -r $ORACLE_HOME/assistants/dbca/templates/General_Purpose.dbc ]] || die 'Template General_Purpose.dbc ausente; instalacao incompleta ou edicao nao contemplada.'
     [[ -x $ORACLE_HOME/bin/lsnrctl ]] || die 'lsnrctl ausente.'
+    info "dbs_dir=$dbs_dir"
+    stage 'versao e arquitetura'
     detect_version
+    stage 'memoria e CPU'
     read_memory
+    info "RAM total=$total_mb MiB; disponivel=$available_mb MiB; swap livre=$swap_mb MiB"
     plan_memory
     cpu_count=$(getconf _NPROCESSORS_ONLN)
     [[ $cpu_count =~ ^[1-9][0-9]*$ ]] || die 'Quantidade de CPUs nao identificada.'
+    stage 'selecao de disco'
     select_storage
+    stage 'espaco temporario'
     filesystem_info /tmp
+    info "/tmp: filesystem=$fs_type; livre=$free_mb MiB; inodes=$free_inodes"
     ((free_mb >= 1024 && free_inodes >= 1024)) || die '/tmp precisa de pelo menos 1 GiB livre e 1024 inodes.'
+    stage 'verificacao de instancia e artefatos existentes'
     check_existing
+    stage 'verificacao do listener'
     inspect_listener
+    stage 'plano de criacao'
     build_parameters
     info "Oracle $version | usuario $owner | ORACLE_HOME=$ORACLE_HOME"
     info "RAM total/livre: $total_mb/$available_mb MiB | swap livre: $swap_mb MiB | CPUs: $cpu_count"
@@ -459,4 +520,4 @@ main() {
     provision
 }
 
-if [[ ${BASH_SOURCE[0]} == "$0" ]]; then main "$@"; fi
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then debug_run "$@"; fi
