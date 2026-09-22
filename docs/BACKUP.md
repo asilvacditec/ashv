@@ -8,14 +8,14 @@ A versão anterior às mudanças está preservada em:
 
 A tag aponta diretamente ao commit original. Classes, JARs, scripts, fontes e avisos daquele estado continuam recuperáveis no histórico Git.
 
-## Cópias locais
+## Cópias versionadas no GitHub
 
-Na máquina em que a modernização foi feita, a pasta ignorada `.local-backups/` contém:
+A pasta [`.local-backups/`](../.local-backups/) está versionada no Git e disponível no GitHub. Ela contém as cópias originais abaixo e o diretório `original-lib/`, com os seis JARs preservados da instalação original:
 
 | Arquivo | SHA-256 |
 | --- | --- |
-| `ashv-original-2026-09-21.zip` | `8ce10a650f5ea4d7eadf5d8ef94e14e0fd6fbdfad809be35f63d88ba97610557` |
-| `ashv-original-2026-09-21.bundle` | `dc326d9d2e6036d123547a51c4ecda3acc90931da595415a58e8ee7b8d087328` |
+| [ashv-original-2026-09-21.zip](../.local-backups/ashv-original-2026-09-21.zip) | `8ce10a650f5ea4d7eadf5d8ef94e14e0fd6fbdfad809be35f63d88ba97610557` |
+| [ashv-original-2026-09-21.bundle](../.local-backups/ashv-original-2026-09-21.bundle) | `dc326d9d2e6036d123547a51c4ecda3acc90931da595415a58e8ee7b8d087328` |
 
 O ZIP contém os arquivos versionados originais. O bundle contém o histórico e as referências presentes no momento da cópia, anterior à criação da nova tag. Sua integridade foi verificada com `git bundle verify`. Não havia mudanças locais no início. Essas cópias não incluem dados futuros, perfis locais ou configuração/chaves SSH. Copie-as para outro dispositivo se desejar redundância física.
 

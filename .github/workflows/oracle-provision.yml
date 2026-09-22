@@ -1,0 +1,22 @@
+name: Oracle provisioning script checks
+on:
+  push:
+    paths: ['oracle/create-orcl.sh', 'tests/shell/**', '.github/workflows/oracle-provision.yml']
+  pull_request:
+    paths: ['oracle/create-orcl.sh', 'tests/shell/**', '.github/workflows/oracle-provision.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bash syntax
+        run: |
+          bash -n oracle/create-orcl.sh
+          bash -n tests/shell/create-orcl-test.sh
+      - name: ShellCheck
+        run: shellcheck -x oracle/create-orcl.sh tests/shell/create-orcl-test.sh
+      - name: Provisioning scenarios with simulated Oracle commands
+        run: bash tests/shell/create-orcl-test.sh

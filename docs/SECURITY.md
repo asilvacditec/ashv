@@ -20,6 +20,6 @@ Os backups e a tag original contêm o código antigo, que mantém o comportament
 
 SQLs, nomes de usuários, hosts e detalhes de sessões podem ser sensíveis. O histórico Berkeley DB não é criptografado pela aplicação. Proteja a pasta do projeto, seus históricos e backups com permissões do sistema operacional e, quando necessário, criptografia de disco.
 
-`.gitignore` cobre perfis, senhas, bases Berkeley DB, locks, logs, ferramentas locais, backups e artefatos de build. Isso evita adições acidentais comuns; não substitui a revisão de `git diff --cached` antes de publicar. Dados já presentes no histórico Git não são removidos por `.gitignore`.
+`.gitignore` cobre perfis, senhas, bases Berkeley DB, locks, logs, ferramentas locais e artefatos de build. Os backups do código original em `.local-backups/` são versionados intencionalmente; não coloque backups de bancos ou credenciais nessa pasta. As regras evitam adições acidentais comuns, mas não substituem a revisão de `git diff --cached` antes de publicar. Dados já presentes no histórico Git não são removidos por `.gitignore`.
 
 Use conta dedicada conforme [ORACLE_PRIVILEGES.md](ORACLE_PRIVILEGES.md). A função legada de trace exige privilégio adicional e não faz parte da conta de leitura padrão.

@@ -2,7 +2,6 @@
 /target/
 /dist/
 /.tools/
-/.local-backups/
 /profile/
 *.class
 *.pwd
@@ -18,3 +17,5 @@ je.stat.csv
 .vscode/
 *.iml
 hs_err_pid*
+credentials.env
+dbca.rsp

@@ -36,6 +36,7 @@ Crie uma conexão com host, porta, serviço Oracle e usuário dedicado. O campo 
 | [Privilégios Oracle](docs/ORACLE_PRIVILEGES.md) | Conta dedicada e grants por funcionalidade |
 | [Compatibilidade](docs/COMPATIBILITY.md) | Matriz de evidências e limites |
 | [Testes](docs/TESTING.md) | Suíte local e integração Oracle 12c |
+| [Criar ORCL na VM Vagrant](docs/ORACLE_VAGRANT.md) | Descoberta da instalação, dimensionamento e criação automática com DBCA |
 | [Mudanças](CHANGELOG.md) | Alterações e pendências |
 | [Terceiros](third-party/README.md) | Dependências preservadas e adaptações |
 
