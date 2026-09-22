@@ -132,7 +132,13 @@ Para ver as credenciais, entre como o dono da instalação e leia localmente `cr
 
 O `init.ora` exportado reflete as decisões finais do DBCA, inclusive caminhos dos controlfiles. Ele pode diferir do plano. O banco normalmente utiliza o SPFILE criado pelo DBCA; a exportação é um arquivo textual para inspeção e recuperação administrativa.
 
+O endereço `LOCAL_LISTENER` é aplicado com `ALTER SYSTEM ... SCOPE=BOTH` depois da criação, antes de exportar o PFILE e executar `ALTER SYSTEM REGISTER`. Ele não integra o `INITPARAMS` enviado ao DBCA: isso evita passar um descritor Oracle Net com parênteses e sinais de igualdade pelo parser do arquivo de resposta. O plano inicial não inclui esse parâmetro; o PFILE efetivo o inclui. A porta escolhida por `--port` é preservada.
+
+Para DBCA 10g/11g, `sga_target`, `pga_aggregate_target` e `db_recovery_file_dest_size` são enviados em MiB inteiros, sem sufixo, no `INITPARAMS`; `sga_max_size` é enviado em bytes. O trace real do DBCA 11.2.0.4 mostrou que os três primeiros campos são multiplicados internamente por 1048576, enquanto `sga_max_size` é preservado. Enviar sufixo `M` produziu `Unexpected error!!!`; enviar bytes nesses três campos inflou os valores por outro fator de 1048576. O plano permanece em MiB e `TOTALMEMORY` continua em MiB. Os testes simulados reproduzem essa diferença de unidades; a criação com a correção ainda precisa ser confirmada na VM. Não aumente limites do kernel para acomodar valores inflados por erro de unidade.
+
 ## Listener e acesso pelo host
+
+No Oracle 11g, o script omite `memory_max_target` e mantém `memory_target=0` e `AUTOMATICMEMORYMANAGEMENT=FALSE`. No laboratório 11.2.0.4, mesmo com SGA/PGA corretamente dimensionadas, a presença explícita de `memory_max_target=0` causou ORA-00843/ORA-00849 na inicialização. A omissão evita impor esse máximo explícito; não aumenta a SGA nem altera parâmetros do kernel. A correção ainda requer validação na VM.
 
 Se a porta já responder como listener Oracle, ele é reutilizado sem reinício. Se estiver livre, o script inicia `ORCL_LISTENER` com configuração privada, ouvindo em `0.0.0.0`. Se a porta estiver ocupada por outro serviço, a criação é interrompida; use `--port`.
 
@@ -154,6 +160,8 @@ O script recusa `ORCL` já registrado em `oratab`, processo PMON existente, PFIL
 Se a criação falhar, a segunda execução também será recusada por encontrar os artefatos parciais. Isso é intencional: diagnostique `dbca.log`, `verify.log` e o estado real do Oracle antes de decidir como recuperar o laboratório. **Não há opção `--force`, `DROP DATABASE`, limpeza recursiva de datafiles ou tentativa automática de recriação.**
 
 ## Verificação do script
+
+No laboratório Oracle 11.2.0.4, foi observada uma falha `TNS-04414` / `TNS-04605` durante `Copying database files`, apontando um `(` inesperado em `ADDRESS`. A passagem do descritor `LOCAL_LISTENER` em `INITPARAMS` foi tratada como causa provável e removida desse caminho; a correção ainda requer validação real na VM. O aviso anterior sobre buffer cache mínimo de 16 MB, isoladamente, não identifica a causa da falha. A atualização do script não recupera os artefatos da tentativa anterior: examine o log interno em `$ORACLE_BASE/cfgtoollogs/dbca/ORCL/ORCL.log` e o estado da instância antes de tentar criar novamente.
 
 ```sh
 bash -n oracle/create-orcl.sh

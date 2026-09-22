@@ -240,20 +240,42 @@ inspect_listener() {
 }
 
 build_parameters() {
+    local pair key value
+    local -a response_pairs=()
     parallel_max=$((cpu_count * 2))
     ((parallel_max <= 16)) || parallel_max=16
     init_pairs=("db_name=ORCL" "sga_target=${sga_mb}M" "sga_max_size=${sga_mb}M"
         "pga_aggregate_target=${pga_mb}M" 'processes=300' 'open_cursors=300'
         "parallel_max_servers=$parallel_max" "db_create_file_dest=$data_dir"
         "db_recovery_file_dest=$recovery_dir" "db_recovery_file_dest_size=${fra_mb}M"
-        "audit_file_dest=$work_dir/adump" "local_listener=$listener_address")
+        "audit_file_dest=$work_dir/adump")
+    # Keep Oracle Net descriptors out of DBCA's INITPARAMS parser (11g).
+    # Configure LOCAL_LISTENER through SQL after creation, before registration.
     if ((major >= 11)); then
-        init_pairs+=('memory_target=0' 'memory_max_target=0' "diagnostic_dest=$ORACLE_BASE")
+        init_pairs+=('memory_target=0' "diagnostic_dest=$ORACLE_BASE")
+        # 11.2.0.4 rejects a positive SGA when MEMORY_MAX_TARGET=0 is
+        # explicitly present (ORA-00843/ORA-00849). Disable AMM via
+        # MEMORY_TARGET only; omit the explicit maximum on this path.
+        ((major == 11)) || init_pairs+=('memory_max_target=0')
     else
         init_pairs+=("background_dump_dest=$work_dir/bdump" "user_dump_dest=$work_dir/udump" "core_dump_dest=$work_dir/cdump")
     fi
     [[ $cdb != true ]] || init_pairs+=('enable_pluggable_database=true')
-    init_csv=$(IFS=,; printf '%s' "${init_pairs[*]}")
+    # Legacy DBCA scales these three fields from integer MiB to bytes itself.
+    # SGA_MAX_SIZE is passed through unchanged, so it must use bytes instead.
+    for pair in "${init_pairs[@]}"; do
+        key=${pair%%=*}; value=${pair#*=}
+        if ((major <= 11)); then
+            case $key in
+                sga_target|pga_aggregate_target|db_recovery_file_dest_size)
+                    value=${value%M} ;;
+                sga_max_size)
+                    value=$((${value%M} * 1048576)) ;;
+            esac
+        fi
+        response_pairs+=("$key=$value")
+    done
+    init_csv=$(IFS=,; printf '%s' "${response_pairs[*]}")
 }
 
 write_init() {
@@ -400,6 +422,7 @@ EOF
 whenever oserror exit failure
 whenever sqlerror exit failure
 set echo off feedback off heading off pagesize 0 linesize 200 trimspool on
+alter system set local_listener='$listener_address' scope=both;
 create pfile='$work_dir/init.ora' from spfile;
 alter system register;
 select 'ASHV_ORCL_READY|' || name || '|' || open_mode from v\$database;

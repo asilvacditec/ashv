@@ -121,6 +121,8 @@ test_modern_creation_and_secrets() {
     assert_contains "$fixture_root/captured.rsp" 'createAsContainerDatabase=true'
     assert_contains "$fixture_root/captured.rsp" 'pdbName=ORCLPDB1'
     assert_contains "$fixture_root/captured.rsp" 'memory_target=0'
+    if grep -qi 'local_listener=' "$fixture_root/captured.rsp"; then fail 'Oracle Net descriptor passed through DBCA parser'; fi
+    assert_contains "$run/verify.sql" "alter system set local_listener='(ADDRESS=(PROTOCOL=TCP)(HOST=127.0.0.1)(PORT=1521))' scope=both;"
     assert_contains "$fixture_root/dbca.args" '-silent -createDatabase -responseFile'
     assert_absent "$run/dbca.rsp"
     secret=$(sed -n 's/^SYS_PASSWORD=//p' "$run/credentials.env")
@@ -136,9 +138,30 @@ test_modern_creation_and_secrets() {
 test_legacy_11g() {
     fixture
     export FIXTURE_VERSION=11.2.0.4.0
-    main --oracle-home "$ORACLE_HOME" --data-dir "$fixture_root/data" > "$fixture_root/output"
+    main --oracle-home "$ORACLE_HOME" --data-dir "$fixture_root/data" --port 1522 --memory-mb 2048 > "$fixture_root/output"
     assert_contains "$fixture_root/captured.rsp" 'RESPONSEFILE_VERSION = "11.2.0"'
     assert_contains "$fixture_root/captured.rsp" 'SID = "ORCL"'
+    assert_contains "$fixture_root/captured.rsp" 'sga_target=1536,'
+    assert_contains "$fixture_root/captured.rsp" 'sga_max_size=1610612736,'
+    assert_contains "$fixture_root/captured.rsp" 'pga_aggregate_target=512,'
+    assert_contains "$fixture_root/captured.rsp" 'db_recovery_file_dest_size=6553,'
+    # Reproduce the per-field scaling observed in the real 11.2.0.4 trace.
+    local params target maximum fra
+    params=$(sed -n 's/^INITPARAMS = "\(.*\)"$/\1/p' "$fixture_root/captured.rsp" | tr ',' '\n')
+    target=$(sed -n 's/^sga_target=//p' <<< "$params")
+    maximum=$(sed -n 's/^sga_max_size=//p' <<< "$params")
+    fra=$(sed -n 's/^db_recovery_file_dest_size=//p' <<< "$params")
+    ((target * 1048576 == maximum && fra * 1048576 == 6871318528)) || fail 'Legacy DBCA scaling inflates memory or FRA'
+    assert_contains "$fixture_root/captured.rsp" 'TOTALMEMORY = "2048"'
+    assert_contains "$fixture_root/captured.rsp" 'memory_target=0'
+    if grep -qi 'memory_max_target' "$fixture_root/captured.rsp" "$fixture_root/data/ORCL/provision/initORCL.planned.ora"; then
+        fail '11g must not receive explicit MEMORY_MAX_TARGET=0 with positive SGA'
+    fi
+    assert_contains "$fixture_root/data/ORCL/provision/initORCL.planned.ora" "*.sga_target='1536M'"
+    if grep -qi 'local_listener=' "$fixture_root/captured.rsp"; then fail '11g response contains nested Oracle Net descriptor'; fi
+    local sql=$fixture_root/data/ORCL/provision/verify.sql
+    assert_contains "$sql" "alter system set local_listener='(ADDRESS=(PROTOCOL=TCP)(HOST=127.0.0.1)(PORT=1522))' scope=both;"
+    awk '/^alter system set local_listener=/ {configured=1} /^create pfile=/ {if (!configured) exit 1; exported=1} /^alter system register;/ {if (!exported) exit 1; registered=1} END {if (!registered) exit 1}' "$sql" || fail 'Listener must be set before PFILE export and registration'
     if grep -q 'PDB\|CREATEASCONTAINER' "$fixture_root/captured.rsp"; then fail 'Legacy PDB parameters'; fi
 }
 
@@ -147,6 +170,9 @@ test_legacy_10g() {
     export FIXTURE_VERSION=10.2.0.5.0
     main --oracle-home "$ORACLE_HOME" --data-dir "$fixture_root/data" > "$fixture_root/output"
     assert_contains "$fixture_root/captured.rsp" 'RESPONSEFILE_VERSION = "10.0.0"'
+    assert_contains "$fixture_root/captured.rsp" 'sga_target=3072,'
+    assert_contains "$fixture_root/captured.rsp" 'sga_max_size=3221225472,'
+    assert_contains "$fixture_root/captured.rsp" 'db_recovery_file_dest_size=6553,'
     if grep -q 'memory_target\|diagnostic_dest\|AUTOMATICMEMORY' "$fixture_root/captured.rsp"; then fail 'Unsupported 10g parameters'; fi
 }
 
