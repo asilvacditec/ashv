@@ -21,153 +21,36 @@
  */
 package org.ash.conn.settings;
 
-import java.io.*;
-import java.util.*;
-
-import javax.swing.*;
-
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Vector;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import org.ash.util.Options;
 
-
-/**
- * The Class ConnectionProfile.
- */
+/** Swing adapter for password-free profile persistence. */
 public class ConnectionProfile {
-  
-  /** The FILESEPARATOR. */
-  private final String FILESEPARATOR = System.getProperty("file.separator");
-
-  /**
-   * Load profile.
-   * 
-   * @param parent the parent
-   * @param file the file
-   * @param conns the connections
-   * @param connNames the connection names
-   */
-  public void loadProfile(JFrame parent,File file,ArrayList conns,Vector connNames) {
-    try { 
-        loadProfileV(parent,file,conns,connNames);  
-    } catch (Exception ex) {
-      ex.printStackTrace();
-      JOptionPane.showMessageDialog(
-          parent,
-          Options.getInstance().getResource("error on loading connections profile files.")+":\n"+ex.getMessage(),
-          Options.getInstance().getResource("error"),
-          JOptionPane.ERROR_MESSAGE
-      );
-    }
-
-  }
-
-  /**
-   * Load profile.
-   * 
-   * @param parent the parent
-   * @param file the file
-   * @param conns the connections
-   * @param connNames the connection names
-   */
-  private void loadProfileV(JFrame parent,File file,ArrayList conns,Vector connNames) {
+  public void loadProfile(JFrame parent, File file, ArrayList conns, Vector connNames) {
     try {
-      // load .ini file...
-      String line = null;
-      int dbType;
-      String name = null;
-      String driver = null;
-      String url = null;
-      String username = null;
-      String edition = null;
-      BufferedReader br = new BufferedReader(new InputStreamReader( new FileInputStream(file) ));
- 
-      // create dir for profile /
-      createDirStr(file.getName().replace(' ','_').replace(".ini", ""));
-      
-      // read connection properties...
-      name = br.readLine();
-      driver = br.readLine();
-      url = br.readLine();
-      username = br.readLine();
-      edition = br.readLine();
-      br.close();
-
-      File passwdFile = new File(file.getAbsolutePath().substring(0,file.getAbsolutePath().length()-4)+".pwd");
-      FileInputStream in = new FileInputStream(passwdFile);
-      byte[] bb = new byte[(int)passwdFile.length()];
-      in.read(bb);
-      String password = Options.getInstance().decodeFromBytes(bb);
-      in.close();
-
-      conns.add(new DbConnection(name,driver,url,username,password,edition));
-      connNames.add(name);
-
+      DbConnection connection = ProfileStore.read(file.toPath());
+      conns.add(connection);
+      connNames.add(connection.getName());
     } catch (Exception ex) {
-      ex.printStackTrace();
-      JOptionPane.showMessageDialog(
-          parent,
-          Options.getInstance().getResource("error on loading connections profile files.")+":\n"+ex.getMessage(),
-          Options.getInstance().getResource("error"),
-          JOptionPane.ERROR_MESSAGE
-      );
+      JOptionPane.showMessageDialog(parent, ex.getMessage(),
+          Options.getInstance().getResource("error on loading connections profile files."),
+          JOptionPane.ERROR_MESSAGE);
     }
   }
 
-
- /**
-  * Save profile.
-  * 
-  * @param parent the parent
-  * @param c the c
-  * @param isEdit the is edit
-  */
- public void saveProfile(JFrame parent,DbConnection c,boolean isEdit) {
-   try {
-     PrintWriter pw = 
-    	 new PrintWriter(
-    		 new FileOutputStream(
-    				 new File("profile"+FILESEPARATOR+c.getName().replace(' ','_')+".ini")));
-   
-     // create dir for profile /
-     createDirStr(c.getName().replace(' ','_').replace(".ini", ""));
-     
-     // save connection properties...
-     pw.println( c.getName() );
-     pw.println( c.getClassName() );
-     pw.println( c.getUrl() );
-     pw.println( c.getUsername() );
-     pw.println( c.getEdition() );
-
-     // save one empty row...
-     pw.println( "" );
-     pw.close();
-
-     File passwdFile = new File("profile/"+c.getName().replace(' ','_')+".pwd");
-
-     FileOutputStream out = new FileOutputStream(passwdFile);
-     out.write(Options.getInstance().encodeToBytes(c.getPassword()));
-     out.close();
-
-
-   } catch (Exception ex) {
-     ex.printStackTrace();
-     JOptionPane.showMessageDialog(
-         parent,
-         Options.getInstance().getResource("error on saving connections profile files.")+":\n"+ex.getMessage(),
-         Options.getInstance().getResource("error"),
-         JOptionPane.ERROR_MESSAGE
-     );
-   }
- }
-
- /**
-  * Creates the dir str.
-  * 
-  * @param profile the profile
-  */
- private void createDirStr(String profile){
-	 File dirRootProfile = new File(profile);
-	 File dirRootLogs = new File(profile/*+FILESEPARATOR+"database"*/);
-	 dirRootProfile.mkdir();
-	 dirRootLogs.mkdir();
- }
+  public void saveProfile(JFrame parent, DbConnection connection, boolean isEdit) {
+    try {
+      ProfileStore.write(Path.of("profile"), connection);
+    } catch (Exception ex) {
+      JOptionPane.showMessageDialog(parent, ex.getMessage(),
+          Options.getInstance().getResource("error on saving connections profile files."),
+          JOptionPane.ERROR_MESSAGE);
+      throw new IllegalStateException("Connection profile could not be saved", ex);
+    }
+  }
 }

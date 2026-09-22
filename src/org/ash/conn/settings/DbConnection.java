@@ -76,7 +76,7 @@ public class DbConnection {
    * @return the class name
    */
   public String getClassNameDriverName() {
-	  return "oracle.jdbc.driver.OracleDriver";
+	  return "oracle.jdbc.OracleDriver";
   }
 
   /**
@@ -90,7 +90,7 @@ public class DbConnection {
    * @return the url
    */
   public String getUrl(String host,String port,String sid) {
-     return "jdbc:oracle:thin:@"+host+":"+port+":"+sid;
+     return OracleJdbcUrl.service(host, port, sid);
   }
 
   /**
@@ -98,30 +98,21 @@ public class DbConnection {
    * 
    * @return the host
    */
-  public String getHost() {
-	  return url.substring(18,url.indexOf(":",18));
-  }
+  public String getHost() { return OracleJdbcUrl.parts(url)[0]; }
 
   /**
    * Gets the port.
    * 
    * @return the port
    */
-  public String getPort() {
-    int index = url.indexOf(":",18);
-      return url.substring(index+1,url.indexOf(":",index+1));
-  }
+  public String getPort() { return OracleJdbcUrl.parts(url)[1]; }
 
   /**
    * Gets the Server ID.
    * 
    * @return the Server ID
    */
-  public String getSID() {
-      int index = url.indexOf(":",18);
-      index = url.indexOf(":",index+1);
-      return url.substring(index+1);
-  }
+  public String getSID() { return OracleJdbcUrl.parts(url)[2]; }
 
   /**
    * Gets the class name.

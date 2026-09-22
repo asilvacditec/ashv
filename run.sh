@@ -1,17 +1,9 @@
 #!/bin/sh
-# ----------------------------------------------------------------------------
-# Licensed to the GNU GENERAL PUBLIC LICENSE Version 3
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# ASH Viewer start up batch script
-#
-# Required ENV vars:
-# JAVA_HOME - location of a JDK home dir
-#
-
-export JAVA_HOME=/usr/bin/java
-
-export JAVA_EXE=$JAVA_HOME/bin/java
-
-$JAVA_EXE -Xmx128m -jar ASHV.jar
+set -eu
+cd -- "$(dirname -- "$0")"
+if [ -n "${JAVA_HOME:-}" ]; then JAVA="$JAVA_HOME/bin/java"; else JAVA=java; fi
+if [ ! -f target/ash-viewer.jar ]; then
+  echo "Build first: mvn clean verify" >&2
+  exit 1
+fi
+exec "$JAVA" -Xmx768m -jar target/ash-viewer.jar "$@"

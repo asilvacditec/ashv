@@ -493,7 +493,7 @@ public class MainFrame extends JFrame implements ActionListener{
 				+ dbConnUtil.getDbConnection().getSID();
 
 		/** init connection pool */
-		model.connectionPoolInit("oracle.jdbc.pool.OracleDataSource",
+		model.connectionPoolInit("oracle.jdbc.OracleDriver",
 				connParam, dbConnUtil.getDbConnection().getUsername(),
 				dbConnUtil.getDbConnection().getPassword());
 		

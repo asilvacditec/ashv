@@ -85,6 +85,7 @@ public class Model {
 				System.out.println("SQL Exception occured " +
 						"while connection pool initialize: "+e.getMessage());
 				errorMessage = e.toString();
+                if (connectionPool != null) connectionPool.closeAllConnections();
 				connectionPool = null;
 			}
 		}
@@ -161,47 +162,15 @@ public class Model {
 	/**
 	 * Save the version of oracle db.
 	 */
-	private void setVersion() {
-		 
-		String tmpVersion = null;
-		 
-			try {
-				Connection conn = connectionPool.getConnection();
-				tmpVersion = 	conn.
-								getMetaData().
-								getDatabaseProductVersion().
-								toString();
-				
-				if (conn != null) {
-					connectionPool.free(conn);
-				} else {
-					connectionPool.closeAllConnections();
-				}
-				
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			
-			if (tmpVersion.substring(6,7).equalsIgnoreCase("8")){
-				setVersionDB("8i");
-			} 
-			else if (tmpVersion.substring(6,7).equalsIgnoreCase("9")){
-				setVersionDB("9i");
-			}
-			else if (tmpVersion.substring(16,18).equalsIgnoreCase("10")){
-				if (tmpVersion.substring(47,51).equalsIgnoreCase("10.1"))
-					setVersionDB("10g1");
-				else {
-					setVersionDB("10g2");
-				}
-			}
-			else if (tmpVersion.substring(16,18).equalsIgnoreCase("11")){
-				if (tmpVersion.substring(28,32).equalsIgnoreCase("11.1"))
-					setVersionDB("11g");
-			}
-		}
-
+ private void setVersion() throws SQLException {
+   Connection conn = connectionPool.getConnection();
+   try {
+     DatabaseMetaData metadata = conn.getMetaData();
+     setVersionDB(OracleVersion.collector(metadata.getDatabaseMajorVersion(), metadata.getDatabaseMinorVersion()));
+   } finally {
+     connectionPool.free(conn);
+   }
+ }
 	/**
 	 * Get the oracle sysdate.
 	 * @return the sysdate

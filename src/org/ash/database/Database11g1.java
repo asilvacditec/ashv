@@ -177,7 +177,7 @@ public class Database11g1 extends ASHDatabase {
 	/**
 	 * Load ash data to local BDB.
 	 */
-	private void loadAshDataToLocal() {
+	void loadAshDataToLocal() {
 
 		ResultSet resultSetAsh = null;
 		PreparedStatement statement = null;
@@ -218,8 +218,7 @@ public class Database11g1 extends ASHDatabase {
 
 				while (resultSetAsh.next()) {
 
-					oracle.sql.DATE oracleDateSampleTime = ((OracleResultSet) resultSetAsh)
-							.getDATE("SAMPLE_TIME");
+					java.sql.Timestamp oracleDateSampleTime = resultSetAsh.getTimestamp("SAMPLE_TIME");
 
 					// Get sample id
 					long sampleIdTmp = resultSetAsh.getLong("SAMPLE_ID");
@@ -229,8 +228,7 @@ public class Database11g1 extends ASHDatabase {
 					}
 					long sampleId = sampleIdTmp + this.getKReconnect();
 
-					double valueSampleTime = (new Long(oracleDateSampleTime
-							.timestampValue().getTime())).doubleValue();
+					double valueSampleTime = oracleDateSampleTime.getTime();
 
 					// Load data for sampleId (ASH)
 					try {
@@ -242,13 +240,10 @@ public class Database11g1 extends ASHDatabase {
 
 					// Load data for active session history
 					try {
-						oracle.sql.DATE oracleDateSqlExecStart = ((OracleResultSet) resultSetAsh)
-								.getDATE("SQL_EXEC_START");
+						java.sql.Timestamp oracleDateSqlExecStart = resultSetAsh.getTimestamp("SQL_EXEC_START");
 						double valueDateSqlExecStart = 0;
 						if (oracleDateSqlExecStart != null) {
-							valueDateSqlExecStart = (new Long(
-									oracleDateSqlExecStart.timestampValue()
-											.getTime())).doubleValue();
+							valueDateSqlExecStart = oracleDateSqlExecStart.getTime();
 						}
 
 						dao.activeSessionHistoryById

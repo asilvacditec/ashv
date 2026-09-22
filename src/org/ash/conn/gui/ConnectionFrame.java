@@ -146,13 +146,14 @@ public class ConnectionFrame extends JDialog {
    * @param isEdit is edit
    */
   public final void updateList(DbConnection c,boolean isEdit) {
+    new DbConnectionUtil(parent,c).saveProfile(isEdit);
     if (!isEdit) {
       conns.add(c);
       connNames.add(c.getName());
     } else {
       connNames.setElementAt(c.getName(),connList.getSelectedIndex());
     }
-    new DbConnectionUtil(parent,c).saveProfile(isEdit);
+
 
     scrollPane.getViewport().removeAll();
     DefaultListModel model = new DefaultListModel();
@@ -333,6 +334,23 @@ public class ConnectionFrame extends JDialog {
     if (connList.getSelectedIndex()==-1)
       return;
     
+    if (!offlineCheckBox.isSelected()) {
+      DbConnection selected = (DbConnection) conns.get(connList.getSelectedIndex());
+      if (selected.getPassword() == null || selected.getPassword().isEmpty()) {
+        JPasswordField passwordField = new JPasswordField(24);
+        int answer = JOptionPane.showConfirmDialog(this, passwordField,
+            "Password for " + selected.getUsername() + " (not saved)",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        char[] password = passwordField.getPassword();
+        try {
+          if (answer != JOptionPane.OK_OPTION) return;
+          selected.setPassword(new String(password));
+        } finally {
+          java.util.Arrays.fill(password, '\0');
+          passwordField.setText("");
+        }
+      }
+    }
     if(offlineCheckBox.isSelected()){
     	 new Thread() {
   	      @Override
@@ -431,13 +449,13 @@ public class ConnectionFrame extends JDialog {
    * 
    * @param c DbConnection
    */
-  void createStorageDir(DbConnection c){
+  void createStorageDir(DbConnection c) throws java.io.IOException {
 	  DateFormat dateFormatDB = new SimpleDateFormat("ddMMyyyyHHmms");	
 	  File dirRootDatabase =
 	         new File(c.getName()
 	                 +FILESEPARATOR
 	                 +dateFormatDB.format(new Long(new Date().getTime())));
-	 dirRootDatabase.mkdir();
+	 java.nio.file.Files.createDirectories(dirRootDatabase.toPath());
 	 Options.getInstance().setEnvDir(dirRootDatabase.toString());
   }
   

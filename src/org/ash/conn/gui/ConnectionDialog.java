@@ -254,10 +254,11 @@ public class ConnectionDialog extends JDialog {
     usernameLabel.setText(Options.getInstance().getResource("username"));
     usernameTF.setText("");
     usernameTF.setColumns(20);
+    passwdTF.setToolTipText("Password is kept only for this application session; never saved to disk.");
     passwdLabel.setText(Options.getInstance().getResource("password"));
     passwdTF.setText("");
     passwdTF.setColumns(20);
-    SIDLabel.setText("SID");
+    SIDLabel.setText("Service name");
     SIDTF.setText("");
     SIDTF.setColumns(20);
     hostLabel.setText(Options.getInstance().getResource("host"));
@@ -375,7 +376,9 @@ public class ConnectionDialog extends JDialog {
 	  c.setClassName(c.getClassNameDriverName());
       c.setName(nameTF.getText());
       c.setUsername(usernameTF.getText());
-      c.setPassword(passwdTF.getText());
+      char[] suppliedPassword = passwdTF.getPassword();
+      try { c.setPassword(new String(suppliedPassword)); }
+      finally { java.util.Arrays.fill(suppliedPassword, '\0'); passwdTF.setText(""); }
       c.setEdition(editionString);
     
       c.setUrl(c.getUrl(

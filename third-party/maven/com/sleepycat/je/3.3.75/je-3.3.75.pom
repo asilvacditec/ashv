@@ -1,0 +1,1 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><groupId>com.sleepycat</groupId><artifactId>je</artifactId><version>3.3.75</version><name>Preserved Berkeley DB Java Edition</name><description>Original dependency preserved to avoid implicit on-disk history migration.</description></project>

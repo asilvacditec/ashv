@@ -25,11 +25,11 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import javax.crypto.*;
+
 
 import java.awt.Color;
-import java.security.*;
-import javax.crypto.spec.*;
+
+
 
 import org.ash.database.ASHDatabase;
 import org.syntax.jedit.JEditTextArea;
@@ -67,18 +67,6 @@ public class Options {
   /** The resource bundle wait class. */
   private ResourceBundle resourceBundleWaitClassLatches = null;
 
-  /** The enc cipher. */
-  private Cipher encCipher = null;
-
-  /** The dec cipher. */
-  private Cipher decCipher = null;
-
-  /** The pbe param spec. */
-  private PBEParameterSpec pbeParamSpec = null;
-
-  /** The pbe key. */
-  private SecretKey pbeKey = null;
-
   /** The connection name. */
   private String connectionName;
   
@@ -115,131 +103,8 @@ public class Options {
   /**
    * Instantiates a new options.
    */
-  private Options() {
-    try {
-      // Salt
-      byte[] salt = {
-          (byte)0xc7, (byte)0x73, (byte)0x21, (byte)0x8c,
-          (byte)0x7e, (byte)0xc8, (byte)0xee, (byte)0x99
-      };
+  private Options() { }
 
-      // Iteration count
-      int count = 20;
-
-      // Create PBE parameter set
-      pbeParamSpec = new PBEParameterSpec(salt, count);
-
-      // Prompt user for encryption password.
-      // Collect user password as char array (using the
-      // "readPasswd" method from above), and convert
-      // it into a SecretKey object, using a PBE key
-      // factory.
-      PBEKeySpec pbeKeySpec = new PBEKeySpec(new char[]{'2','1','1','7','4'});
-      SecretKeyFactory keyFac = SecretKeyFactory.getInstance("PBEWithMD5AndDES");
-      pbeKey = keyFac.generateSecret(pbeKeySpec);
-
-      // get cipher object for password-based encryption
-      encCipher = Cipher.getInstance("PBEWithMD5AndDES");
-
-      // get cipher object for password-based decryption
-      decCipher = Cipher.getInstance("PBEWithMD5AndDES");
-
-    }
-    catch (Throwable ex) {
-      ex.printStackTrace();
-    }
-  }
-
-  /**
-   * Encode.
-   * 
-   * @param text the text
-   * 
-   * @return the string
-   * 
-   * @throws IllegalBlockSizeException the illegal block size exception
-   * @throws BadPaddingException the bad padding exception
-   * @throws InvalidKeyException the invalid key exception
-   * @throws InvalidAlgorithmParameterException the invalid algorithm parameter exception
-   */
-  public final String encode(String text) throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
-    // initialize cipher for encryption, without supplying
-    // any parameters. Here, "myKey" is assumed to refer
-    // to an already-generated key.
-    encCipher.init(Cipher.ENCRYPT_MODE, pbeKey, pbeParamSpec);
-    byte[] cipherText = encCipher.doFinal(text.getBytes());
-    return new String(cipherText);
-  }
-
-
-  /**
-   * Decode.
-   * 
-   * @param text the text
-   * 
-   * @return the string
-   * 
-   * @throws IllegalBlockSizeException the illegal block size exception
-   * @throws BadPaddingException the bad padding exception
-   * @throws InvalidKeyException the invalid key exception
-   * @throws InvalidAlgorithmParameterException the invalid algorithm parameter exception
-   */
-  public final String decode(String text)  throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
-    // initialize cipher for decryption, without supplying
-    // any parameters. Here, "myKey" is assumed to refer
-    // to an already-generated key.
-    decCipher.init(Cipher.DECRYPT_MODE, pbeKey, pbeParamSpec);
-    byte[] cipherText = decCipher.doFinal(text.getBytes());
-    return new String(cipherText);
-
-  }
-
-
-  /**
-   * Encode to bytes.
-   * 
-   * @param text the text
-   * 
-   * @return the byte[]
-   * 
-   * @throws IllegalBlockSizeException the illegal block size exception
-   * @throws BadPaddingException the bad padding exception
-   * @throws InvalidKeyException the invalid key exception
-   * @throws InvalidAlgorithmParameterException the invalid algorithm parameter exception
-   */
-  public final byte[] encodeToBytes(String text) throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
-    encCipher.init(Cipher.ENCRYPT_MODE, pbeKey, pbeParamSpec);
-    byte[] cipherText = encCipher.doFinal(text.getBytes());
-    return cipherText;
-  }
-
-
-  /**
-   * Decode from bytes.
-   * 
-   * @param text the text
-   * 
-   * @return the string
-   * 
-   * @throws IllegalBlockSizeException the illegal block size exception
-   * @throws BadPaddingException the bad padding exception
-   * @throws InvalidKeyException the invalid key exception
-   * @throws InvalidAlgorithmParameterException the invalid algorithm parameter exception
-   */
-  public final String decodeFromBytes(byte[] text)  throws IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
-    // initialize cipher for decryption, without supplying
-    // any parameters. Here, "myKey" is assumed to refer
-    // to an already-generated key.
-    decCipher.init(Cipher.DECRYPT_MODE, pbeKey, pbeParamSpec);
-    byte[] cipherText = decCipher.doFinal(text);
-    return new String(cipherText);
-  }
-
-  /**
-   * Gets the single instance of Options.
-   * 
-   * @return single instance of Options
-   */
   public static Options getInstance() {
     if (opt==null)
       opt = new Options();

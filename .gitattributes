@@ -1,0 +1,7 @@
+# Shell launchers must also work after a Windows checkout.
+*.sh text eol=lf
+*.bat text eol=crlf
+# Preserve exact bytes covered by the vendored Maven checksums.
+third-party/maven/** -text
+# Preserve upstream source bytes and make moves reviewable without newline churn.
+third-party/src/** -text
