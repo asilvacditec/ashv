@@ -24,12 +24,15 @@ Os relatórios locais detalhados ficam em `target/surefire-reports` (ignorados p
 - Build offline repetido sobre uma cópia limpa exportada do índice Git, sem `bin` ou arquivos locais não versionados: 23 testes passaram.
 - Sintaxe do `run.sh` verificada com Bash; movimentação de 906 arquivos confirmada sem alteração de conteúdo, além da adaptação do encoder JPEG.
 
+## Integração contínua
+
+O commit de código `bc88ea22775312caab18323c6c76cdd1005a21c4` passou nas quatro combinações: Ubuntu/Windows e Java 17/21. Evidência: [execução 35682523994 do GitHub Actions](https://github.com/asilvacditec/ashv/actions/runs/35682523994). Esses jobs executaram o build e a suíte local; não conectaram ao Oracle.
+
 ## O que ainda não foi validado
 
 - Não houve conexão com Oracle real. O usuário informou possuir Oracle 12c; subversão, edição, serviço e grants ainda precisam ser definidos para a execução do roteiro.
 - Oracle 19c e posteriores não estão disponíveis nesta etapa.
 - Não foi feita inspeção interativa completa da aplicação Swing.
-- A matriz GitHub Actions precisa ser consultada nas execuções publicadas; o resultado local não representa automaticamente todas as combinações da matriz.
 - Os avisos de depreciação e tipos genéricos do código legado permanecem.
 
 ## Modelo para homologação futura

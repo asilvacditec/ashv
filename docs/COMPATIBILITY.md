@@ -5,7 +5,7 @@ Compilar, selecionar um coletor em teste unitário e monitorar um banco real sã
 | Ambiente | Evidência atual | Situação |
 | --- | --- | --- |
 | Windows + Temurin 17 | Compilação, testes e empacotamento locais | Validado no escopo automatizado |
-| Linux/Windows + Java 17/21 | Workflow GitHub Actions configurado | Consultar o resultado de cada execução no GitHub |
+| Linux/Windows + Java 17/21 | Quatro jobs aprovados no commit `bc88ea2` | Build e suíte local validados; evidência em VALIDATION.md |
 | Oracle 12c | Detecção coberta por teste unitário; usuário possui ambiente | Integração real pendente; primeiro alvo |
 | Oracle 19c | Detecção coberta por teste unitário | Integração real pendente |
 | Oracle 21c / 23 e posteriores | Detecção encaminhada ao coletor 11g | Integração real pendente; não assumir suporte a releases futuras |
