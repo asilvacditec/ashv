@@ -42,6 +42,10 @@ public class MainApp {
 	 * @param args the arguments
 	 */
 	public static void main(String[] args) {
+		if (args.length == 1 && "--sqlserver".equals(args[0])) {
+			javax.swing.SwingUtilities.invokeLater(() -> new org.ash.sqlserver.SqlServerFrame().setVisible(true));
+			return;
+		}
 		new MainApp();
 	}
 }

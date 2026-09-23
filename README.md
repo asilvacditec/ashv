@@ -2,6 +2,8 @@
 
 Aplicação desktop Java Swing para analisar atividade de sessões Oracle, com gráficos de Top Activity, detalhamento de SQL e sessões, planos de execução e histórico local Berkeley DB.
 
+Esta branch também inclui uma [integração experimental com SQL Server 2012+](docs/SQLSERVER.md): coleta agendada na instância, retenção configurável e uma tela de leitura do histórico. Execute `run.bat --sqlserver` (ou `sh run.sh --sqlserver`) após o build. A homologação em SQL Server real está pendente.
+
 Desenvolvido originalmente por **Alex Kardapolov**. Modernização e manutenção atual: **Aparecido Silva**. Os créditos, cabeçalhos e avisos dos demais autores foram preservados: [AUTHORS.md](AUTHORS.md) e [notice.txt](notice.txt).
 
 ## Compilar e executar
@@ -38,6 +40,7 @@ Crie uma conexão com host, porta, serviço Oracle e usuário dedicado. O campo 
 | [Privilégios Oracle](docs/ORACLE_PRIVILEGES.md) | Conta dedicada e grants por funcionalidade |
 | [Compatibilidade](docs/COMPATIBILITY.md) | Matriz de evidências e limites |
 | [Testes](docs/TESTING.md) | Suíte local e integração Oracle 12c |
+| [SQL Server experimental](docs/SQLSERVER.md) | Instalação do repositório, jobs, retenção e consulta do histórico |
 | [Criar ORCL na VM Vagrant](docs/ORACLE_VAGRANT.md) | Descoberta da instalação, dimensionamento e criação automática com DBCA |
 | [Mudanças](CHANGELOG.md) | Alterações e pendências |
 | [Terceiros](third-party/README.md) | Dependências preservadas e adaptações |

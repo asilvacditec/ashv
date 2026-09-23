@@ -13,6 +13,7 @@ Alteração feita nesta etapa no E-Gantt: `BasicJPEGEncoder` usa `javax.imageio.
 | Dependência | Versão | Decisão |
 | --- | --- | --- |
 | Oracle JDBC `ojdbc8` | 19.30.0.0 | Linha escolhida para o alvo Oracle 12c e Java 17; requer homologação |
+| Microsoft JDBC `mssql-jdbc` | 12.8.2.jre11 | Leitor SQL Server experimental em Java 17+; conexão com SQL Server 2012+ requer homologação |
 | Joda-Time | 2.14.0 | Atualizada e resolvida no Maven Central |
 | JCommon | 1.0.24 | Atualizada mantendo API do JFreeChart incorporado |
 | Commons Logging | 1.3.5 | Atualizada e resolvida no Maven Central |

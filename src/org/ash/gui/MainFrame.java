@@ -765,7 +765,10 @@ public void actionPerformed(ActionEvent e) {
     	    menuFileExit.setText(Options.getInstance().getResource("exit.text"));
     	    menuFileExit.addActionListener(new MainFrame_menuFileExit_ActionAdapter(this));
     	
-    	 menuFile.add(menuFileExit);
+         menuFile.add(menuFileExit);
+         JMenuItem sqlServer = new JMenuItem("SQL Server (experimental)");
+         sqlServer.addActionListener(e -> new org.ash.sqlserver.SqlServerFrame().setVisible(true));
+         menuFile.add(sqlServer);
 
         JMenu menuHelp = new JMenu();
 	    	menuHelp.setMnemonic(Options.getInstance().getResource("help.mnemonic").charAt(0));

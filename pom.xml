@@ -12,6 +12,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
+    <dependency><groupId>com.microsoft.sqlserver</groupId><artifactId>mssql-jdbc</artifactId><version>12.8.2.jre11</version></dependency>
   <!-- See third-party/README.md for the deliberately preserved storage engine. -->
     <dependency><groupId>com.oracle.database.jdbc</groupId><artifactId>ojdbc8</artifactId><version>19.30.0.0</version></dependency>
     <dependency><groupId>com.sleepycat</groupId><artifactId>je</artifactId><version>3.3.75</version></dependency>

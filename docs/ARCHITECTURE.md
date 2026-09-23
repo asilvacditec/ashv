@@ -11,6 +11,13 @@ flowchart TD
 
 ## Organização
 
+Na branch SQL Server, `org.ash.activity.ActivityRepository` define um contrato
+de leitura independente de Oracle. `org.ash.sqlserver` contém o adaptador JDBC
+e a tela experimental; `sqlserver/` contém o schema e os procedimentos de
+coleta/expurgo executados no servidor. A implementação não converte amostras de
+um minuto em ASH Oracle de um segundo e não grava esses dados no Berkeley DB
+legado. Consulte [SQL Server](SQLSERVER.md) para o fluxo, limites e evolução.
+
 | Caminho | Responsabilidade |
 | --- | --- |
 | `src/org/ash/MainApp.java` | Entrada da aplicação |

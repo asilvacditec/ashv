@@ -4,6 +4,7 @@ Compilar, selecionar um coletor em teste unitário e monitorar um banco real sã
 
 | Ambiente | Evidência atual | Situação |
 | --- | --- | --- |
+| SQL Server 2012+ (experimental) | Adaptador JDBC e testes simulados; scripts escritos para T-SQL 2012 | Instalação, jobs, permissões, TLS e interface com dados reais pendentes; ver SQLSERVER.md |
 | Windows + Temurin 17 | Compilação, testes e empacotamento locais | Validado no escopo automatizado |
 | Linux/Windows + Java 17/21 | Quatro jobs aprovados no commit `bc88ea2` | Build e suíte local validados; evidência em VALIDATION.md |
 | Oracle 12c | Detecção coberta por teste unitário; usuário possui ambiente | Integração real pendente; primeiro alvo |

@@ -1,5 +1,13 @@
 # Alterações
 
+## SQL Server experimental — setembro de 2026
+
+- Branch `feature/sqlserver-session-history` para suporte inicial a SQL Server 2012+.
+- Repositório dedicado com amostras UTC de requisições, coleta a cada minuto e expurgo horário com retenção padrão de 30 dias.
+- Jobs independentes, lock contra coleta concorrente, texto SQL opcional e role de leitura.
+- Contrato de leitura independente de Oracle e tela com atividade, rankings e detalhes, acessível por `--sqlserver`.
+- Testes JDBC simulados e roteiro SQL para homologação; execução em SQL Server real ainda pendente.
+
 ## Modernização inicial — setembro de 2026
 
 Contribuição atual: **Aparecido Silva**. Autoria original de **Alex Kardapolov** e créditos de terceiros preservados.

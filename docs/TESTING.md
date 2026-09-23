@@ -4,6 +4,11 @@ Para preparar o ambiente Windows, consulte os [scripts de apoio aos testes](../t
 
 ## Suíte local
 
+O módulo SQL Server inclui testes JDBC simulados no build e um roteiro SQL de
+integração manual em `sqlserver/verify.sql`. Instruções e limites estão em
+[SQL Server experimental](SQLSERVER.md). A execução da suíte local não comprova
+a instalação ou o funcionamento dos jobs em uma instância real.
+
 ```sh
 mvn clean verify
 ```
