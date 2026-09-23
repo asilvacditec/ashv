@@ -1,5 +1,74 @@
 # Criar o banco ORCL na VM Vagrant
 
+## Alternativa validada no laboratorio: Oracle 11gR2
+
+Aparecido relatou que a criacao com `create-orcl.sh` falhou em sua VM e que a
+chamada direta ao DBCA funcionou. Essa abordagem esta em
+[oracle/dbca.sh](../oracle/dbca.sh): template `General_Purpose.dbc`, filesystem,
+AL32UTF8/AL16UTF16, `MULTIPURPOSE` e `-totalMemory 1024`, sem impor `initParams`
+de SGA/PGA. O relato valida a abordagem original; a versao ajustada do repositorio
+ainda precisa ser executada no Oracle real.
+
+Para criar **um banco novo**, execute como usuario `oracle`, com `ORACLE_BASE`,
+`ORACLE_HOME` e `ORACLE_SID` definidos no ambiente:
+
+```sh
+# Dentro da VM, na sessao do usuario oracle; ajuste os caminhos da instalacao.
+export ORACLE_BASE=/u01/app/oracle
+export ORACLE_HOME="$ORACLE_BASE/product/11.2.0/dbhome_1"
+export ORACLE_SID=ORCL
+bash /vagrant/oracle/dbca.sh
+```
+
+### Pre-requisitos e parametros
+
+Use Bash no Linux, com os binarios Oracle 11gR2 ja instalados e o template
+`$ORACLE_HOME/assistants/dbca/templates/General_Purpose.dbc` disponivel. O usuario
+precisa de permissao para criar os diretorios de dados e FRA e de autenticacao
+local OSDBA para executar `sqlplus / as sysdba`. O script nao instala Oracle nem
+configura os pre-requisitos do sistema operacional.
+
+| Configuracao | Valor usado pelo script |
+| --- | --- |
+| Nome global e SID | Valor de `ORACLE_SID` |
+| Template e tipo | `General_Purpose.dbc`, `MULTIPURPOSE` |
+| Armazenamento | `FS`, em `$ORACLE_BASE/oradata` |
+| Area de recuperacao | `$ORACLE_BASE/fast_recovery_area` |
+| Caracteres | `AL32UTF8`, nacional `AL16UTF16` |
+| Memoria solicitada ao DBCA | 1024 MB, por `-totalMemory` |
+| Enterprise Manager | `NONE` |
+| Credenciais | SYS e SYSTEM solicitadas no terminal |
+
+Nao ha opcoes de linha de comando ou modo `--dry-run`. A criacao pelo DBCA e
+silenciosa, mas a leitura inicial das senhas exige entrada do usuario. Memoria,
+template e demais parametros estao fixados no arquivo; o script nao calcula
+RAM ou espaco livre. Tambem nao inicia nem configura explicitamente um listener.
+
+### Validacao e falhas
+
+O script solicita as senhas SYS e SYSTEM sem eco e usa os destinos
+`$ORACLE_BASE/oradata` e `$ORACLE_BASE/fast_recovery_area`. As senhas sao passadas
+nos argumentos do DBCA; nao ative `set -x`. Ele interrompe em caso de falha no
+DBCA ou na validacao SQL e somente anuncia `READY` com a instancia `OPEN` e o
+banco `READ WRITE`. O heredoc SQL preserva literalmente os nomes `v$instance` e
+`v$database`. Nao execute novamente sobre o banco que ja foi criado; essa
+alternativa nao implementa as verificacoes previas do script automatico.
+
+Ao concluir, as consultas exibem instancia, versao, status, nome do banco, modo
+de abertura e papel do banco. O bloco PL/SQL valida `OPEN` e `READ WRITE`; erros
+SQL e de sistema operacional fazem o SQL*Plus retornar falha. O delimitador
+`<<'SQL'` impede que o Bash expanda `$instance` e `$database` nas consultas.
+
+Para verificar o codigo de saida, execute `echo $?` imediatamente apos o script:
+zero indica conclusao; um valor diferente de zero indica falha. A saida do DBCA
+e do SQL*Plus aparece no terminal, sem arquivo de log adicional criado pelo
+script. Se houver falha, consulte as mensagens e os logs do proprio Oracle.
+Arquivos parciais sao preservados: nao ha rollback, limpeza ou retomada
+automatica. Diagnostique o estado da instancia e dos arquivos antes de tentar
+novamente.
+
+## Script automatico multiversao
+
 O script [oracle/create-orcl.sh](../oracle/create-orcl.sh) foi escrito para uma VM **Linux já provisionada com os binários Oracle**, mas sem o banco ORCL. Contribuição: **Aparecido Silva**, mantendo os créditos do ASH Viewer e de seus autores.
 
 Ele cria a instância e o banco pelo **DBCA da própria instalação**, gera um plano `initORCL.planned.ora` e exporta o **`init.ora` efetivo do SPFILE** após a criação. O DBCA também instala o dicionário de dados e executa as etapas internas de criação apropriadas à versão; apenas criar um `init.ora` não seria suficiente para criar um banco utilizável.
