@@ -1,5 +1,7 @@
 # Testes e validação Oracle
 
+Para preparar o ambiente Windows, consulte os [scripts de apoio aos testes](../test-support/README.md): instalação de Java/Maven e preparação do host Vagrant para o laboratório Oracle.
+
 ## Suíte local
 
 ```sh

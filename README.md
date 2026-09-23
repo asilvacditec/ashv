@@ -8,6 +8,8 @@ Desenvolvido originalmente por **Alex Kardapolov**. Modernização e manutençã
 
 Instale um JDK 17 e Maven 3.9.x, configure `JAVA_HOME` para o diretório do JDK e disponibilize `mvn` no `PATH`.
 
+No Windows, os scripts opcionais em [test-support](test-support/README.md) preparam Java/Maven e Vagrant para o ambiente de testes.
+
 ```sh
 mvn clean verify
 ```
